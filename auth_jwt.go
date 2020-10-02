@@ -425,15 +425,13 @@ func (mw *FiberJWTMiddleware) GetClaimsFromJWT(c *fiber.Ctx) (MapClaims, error) 
 // Reply will be of the form {"token": "TOKEN"}.
 func (mw *FiberJWTMiddleware) LoginHandler(c *fiber.Ctx) error {
 	if mw.Authenticator == nil {
-		mw.unauthorized(c, http.StatusInternalServerError, mw.HTTPStatusMessageFunc(ErrMissingAuthenticatorFunc, c))
-		return nil
+		return mw.unauthorized(c, http.StatusInternalServerError, mw.HTTPStatusMessageFunc(ErrMissingAuthenticatorFunc, c))
 	}
 
 	data, err := mw.Authenticator(c)
 
 	if err != nil {
-		mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(err, c))
-		return nil
+		return mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(err, c))
 	}
 
 	// Create the token
@@ -452,8 +450,7 @@ func (mw *FiberJWTMiddleware) LoginHandler(c *fiber.Ctx) error {
 	tokenString, err := mw.signedString(token)
 
 	if err != nil {
-		mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(ErrFailedTokenCreation, c))
-		return nil
+		return mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(ErrFailedTokenCreation, c))
 	}
 
 	// set cookie
@@ -473,12 +470,11 @@ func (mw *FiberJWTMiddleware) LoginHandler(c *fiber.Ctx) error {
 		c.Cookie(cookies)
 	}
 
-	mw.LoginResponse(c, http.StatusOK, tokenString, expire)
-	return nil
+	return mw.LoginResponse(c, http.StatusOK, tokenString, expire)
 }
 
 // LogoutHandler can be used by clients to remove the jwt cookie (if set)
-func (mw *FiberJWTMiddleware) LogoutHandler(c *fiber.Ctx) {
+func (mw *FiberJWTMiddleware) LogoutHandler(c *fiber.Ctx) error {
 	// delete auth cookie
 	if mw.SendCookie {
 
@@ -494,7 +490,7 @@ func (mw *FiberJWTMiddleware) LogoutHandler(c *fiber.Ctx) {
 		c.Cookie(cookies)
 	}
 
-	mw.LogoutResponse(c, http.StatusOK)
+	return mw.LogoutResponse(c, http.StatusOK)
 }
 
 func (mw *FiberJWTMiddleware) signedString(token *jwt.Token) (string, error) {
