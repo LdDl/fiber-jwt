@@ -18,7 +18,7 @@ Import it in your code:
 
 ```go
 import (
-    jwt "github.com/LdDl/fiber-jwt"
+    jwt "github.com/LdDl/fiber-jwt/v2"
 )
 ```
 
