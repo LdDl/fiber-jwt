@@ -134,13 +134,11 @@ func InitAuth(db Database) *jwt.FiberJWTMiddleware {
 			}
 			return false
 		},
-		Unauthorized: func(ctx *fiber.Ctx, code int, message string) {
+		Unauthorized: func(ctx *fiber.Ctx, code int, message string) error {
 			if message == jwt.ErrFailedAuthentication.Error() {
-				ctx.Status(401).JSON(fiber.Map{"Error": string(ctx.Context().URI().Path()) + ";Unauthorized"})
-				return
+				return ctx.Status(401).JSON(fiber.Map{"Error": string(ctx.Context().URI().Path()) + ";Unauthorized"})
 			}
-			ctx.Status(403).JSON(fiber.Map{"Error": string(ctx.Context().URI().Path()) + message})
-			return
+			return ctx.Status(403).JSON(fiber.Map{"Error": string(ctx.Context().URI().Path()) + message})
 		},
 		TokenLookup:   "header: Authorization, query: token, cookie: token",
 		TokenHeadName: "Bearer",

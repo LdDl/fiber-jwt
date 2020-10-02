@@ -51,7 +51,7 @@ curl -X POST 'http://localhost:8080/api/doauth' -d '{"username": "user", "passwo
 ### Refresh token API
 
 ```bash
-curl -X GET 'http://localhost:8080/api/v0.0.1/refresh?token=PUT_RECIEVED_TOKEN'
+curl -X GET 'http://localhost:8080/api/v0.0.1/refresh_token?token=PUT_RECIEVED_TOKEN'
 ```
 
 ### Login Flow

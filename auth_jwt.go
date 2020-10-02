@@ -60,16 +60,16 @@ type FiberJWTMiddleware struct {
 	PayloadFunc func(data interface{}) MapClaims
 
 	// User can define own Unauthorized func.
-	Unauthorized func(*fiber.Ctx, int, string)
+	Unauthorized func(*fiber.Ctx, int, string) error
 
 	// User can define own LoginResponse func.
-	LoginResponse func(*fiber.Ctx, int, string, time.Time)
+	LoginResponse func(*fiber.Ctx, int, string, time.Time) error
 
 	// User can define own LogoutResponse func.
-	LogoutResponse func(*fiber.Ctx, int)
+	LogoutResponse func(*fiber.Ctx, int) error
 
 	// User can define own RefreshResponse func.
-	RefreshResponse func(*fiber.Ctx, int, string, time.Time)
+	RefreshResponse func(*fiber.Ctx, int, string, time.Time) error
 
 	// Set the identity handler function
 	IdentityHandler func(*fiber.Ctx) interface{}
@@ -281,8 +281,8 @@ func (mw *FiberJWTMiddleware) MiddlewareInit() error {
 	}
 
 	if mw.Unauthorized == nil {
-		mw.Unauthorized = func(c *fiber.Ctx, code int, message string) {
-			c.Status(code).JSON(fiber.Map{
+		mw.Unauthorized = func(c *fiber.Ctx, code int, message string) error {
+			return c.Status(code).JSON(fiber.Map{
 				"code":    code,
 				"message": message,
 			})
@@ -290,8 +290,8 @@ func (mw *FiberJWTMiddleware) MiddlewareInit() error {
 	}
 
 	if mw.LoginResponse == nil {
-		mw.LoginResponse = func(c *fiber.Ctx, code int, token string, expire time.Time) {
-			c.Status(http.StatusOK).JSON(fiber.Map{
+		mw.LoginResponse = func(c *fiber.Ctx, code int, token string, expire time.Time) error {
+			return c.Status(http.StatusOK).JSON(fiber.Map{
 				"code":   http.StatusOK,
 				"token":  token,
 				"expire": expire.Format(time.RFC3339),
@@ -300,16 +300,16 @@ func (mw *FiberJWTMiddleware) MiddlewareInit() error {
 	}
 
 	if mw.LogoutResponse == nil {
-		mw.LogoutResponse = func(c *fiber.Ctx, code int) {
-			c.Status(http.StatusOK).JSON(fiber.Map{
+		mw.LogoutResponse = func(c *fiber.Ctx, code int) error {
+			return c.Status(http.StatusOK).JSON(fiber.Map{
 				"code": http.StatusOK,
 			})
 		}
 	}
 
 	if mw.RefreshResponse == nil {
-		mw.RefreshResponse = func(c *fiber.Ctx, code int, token string, expire time.Time) {
-			c.Status(http.StatusOK).JSON(fiber.Map{
+		mw.RefreshResponse = func(c *fiber.Ctx, code int, token string, expire time.Time) error {
+			return c.Status(http.StatusOK).JSON(fiber.Map{
 				"code":   http.StatusOK,
 				"token":  token,
 				"expire": expire.Format(time.RFC3339),
@@ -357,32 +357,28 @@ func (mw *FiberJWTMiddleware) MiddlewareInit() error {
 }
 
 // MiddlewareFunc makes FiberJWTMiddleware implement the Middleware interface.
-func (mw *FiberJWTMiddleware) MiddlewareFunc() func(c *fiber.Ctx) {
-	return func(c *fiber.Ctx) {
-		mw.middlewareImpl(c)
+func (mw *FiberJWTMiddleware) MiddlewareFunc() func(c *fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
+		return mw.middlewareImpl(c)
 	}
 }
 
-func (mw *FiberJWTMiddleware) middlewareImpl(c *fiber.Ctx) {
+func (mw *FiberJWTMiddleware) middlewareImpl(c *fiber.Ctx) error {
 	claims, err := mw.GetClaimsFromJWT(c)
 	if err != nil {
-		mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(err, c))
-		return
+		return mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(err, c))
 	}
 
 	if claims["exp"] == nil {
-		mw.unauthorized(c, http.StatusBadRequest, mw.HTTPStatusMessageFunc(ErrMissingExpField, c))
-		return
+		return mw.unauthorized(c, http.StatusBadRequest, mw.HTTPStatusMessageFunc(ErrMissingExpField, c))
 	}
 
 	if _, ok := claims["exp"].(float64); !ok {
-		mw.unauthorized(c, http.StatusBadRequest, mw.HTTPStatusMessageFunc(ErrWrongFormatOfExp, c))
-		return
+		return mw.unauthorized(c, http.StatusBadRequest, mw.HTTPStatusMessageFunc(ErrWrongFormatOfExp, c))
 	}
 
 	if int64(claims["exp"].(float64)) < mw.TimeFunc().Unix() {
-		mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(ErrExpiredToken, c))
-		return
+		return mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(ErrExpiredToken, c))
 	}
 
 	c.Context().SetUserValue("JWT_PAYLOAD", claims)
@@ -395,11 +391,10 @@ func (mw *FiberJWTMiddleware) middlewareImpl(c *fiber.Ctx) {
 	}
 
 	if !mw.Authorizator(identity, c) {
-		mw.unauthorized(c, http.StatusForbidden, mw.HTTPStatusMessageFunc(ErrForbidden, c))
-		return
+		return mw.unauthorized(c, http.StatusForbidden, mw.HTTPStatusMessageFunc(ErrForbidden, c))
 	}
 
-	c.Next()
+	return c.Next()
 }
 
 // GetClaimsFromJWT get claims from JWT token
@@ -519,12 +514,10 @@ func (mw *FiberJWTMiddleware) signedString(token *jwt.Token) (string, error) {
 func (mw *FiberJWTMiddleware) RefreshHandler(c *fiber.Ctx) error {
 	tokenString, expire, err := mw.RefreshToken(c)
 	if err != nil {
-		mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(err, c))
-		return nil
+		return mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(err, c))
 	}
 
-	mw.RefreshResponse(c, http.StatusOK, tokenString, expire)
-	return nil
+	return mw.RefreshResponse(c, http.StatusOK, tokenString, expire)
 }
 
 // RefreshToken refresh token and check if token is expired
@@ -736,12 +729,12 @@ func (mw *FiberJWTMiddleware) ParseTokenString(token string) (*jwt.Token, error)
 	})
 }
 
-func (mw *FiberJWTMiddleware) unauthorized(c *fiber.Ctx, code int, message string) {
+func (mw *FiberJWTMiddleware) unauthorized(c *fiber.Ctx, code int, message string) error {
 	c.Context().Request.Header.Set("WWW-Authenticate", "JWT realm="+mw.Realm)
 	if !mw.DisabledAbort {
 		// @todo abort?
 	}
-	mw.Unauthorized(c, code, message)
+	return mw.Unauthorized(c, code, message)
 }
 
 // ExtractClaims help to extract the JWT claims
