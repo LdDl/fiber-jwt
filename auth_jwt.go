@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/gofiber/fiber"
+	"github.com/gofiber/fiber/v2"
 )
 
 // MapClaims type that uses the map[string]interface{} for JSON decoding
@@ -385,12 +385,12 @@ func (mw *FiberJWTMiddleware) middlewareImpl(c *fiber.Ctx) {
 		return
 	}
 
-	c.Fasthttp.SetUserValue("JWT_PAYLOAD", claims)
+	c.Context().SetUserValue("JWT_PAYLOAD", claims)
 	// c.Set("JWT_PAYLOAD", claims)
 	identity := mw.IdentityHandler(c)
 
 	if identity != nil {
-		c.Fasthttp.SetUserValue(mw.IdentityKey, identity)
+		c.Context().SetUserValue(mw.IdentityKey, identity)
 		// c.Set(mw.IdentityKey, identity)
 	}
 
@@ -411,9 +411,9 @@ func (mw *FiberJWTMiddleware) GetClaimsFromJWT(c *fiber.Ctx) (MapClaims, error) 
 	}
 
 	if mw.SendAuthorization {
-		v := c.Fasthttp.UserValue("JWT_TOKEN")
+		v := c.Context().UserValue("JWT_TOKEN")
 		if v != nil {
-			c.Fasthttp.Request.Header.Set("Authorization", mw.TokenHeadName+" "+v.(string))
+			c.Context().Request.Header.Set("Authorization", mw.TokenHeadName+" "+v.(string))
 		}
 	}
 
@@ -428,17 +428,17 @@ func (mw *FiberJWTMiddleware) GetClaimsFromJWT(c *fiber.Ctx) (MapClaims, error) 
 // LoginHandler can be used by clients to get a jwt token.
 // Payload needs to be json in the form of {"username": "USERNAME", "password": "PASSWORD"}.
 // Reply will be of the form {"token": "TOKEN"}.
-func (mw *FiberJWTMiddleware) LoginHandler(c *fiber.Ctx) {
+func (mw *FiberJWTMiddleware) LoginHandler(c *fiber.Ctx) error {
 	if mw.Authenticator == nil {
 		mw.unauthorized(c, http.StatusInternalServerError, mw.HTTPStatusMessageFunc(ErrMissingAuthenticatorFunc, c))
-		return
+		return nil
 	}
 
 	data, err := mw.Authenticator(c)
 
 	if err != nil {
 		mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(err, c))
-		return
+		return nil
 	}
 
 	// Create the token
@@ -458,7 +458,7 @@ func (mw *FiberJWTMiddleware) LoginHandler(c *fiber.Ctx) {
 
 	if err != nil {
 		mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(ErrFailedTokenCreation, c))
-		return
+		return nil
 	}
 
 	// set cookie
@@ -479,6 +479,7 @@ func (mw *FiberJWTMiddleware) LoginHandler(c *fiber.Ctx) {
 	}
 
 	mw.LoginResponse(c, http.StatusOK, tokenString, expire)
+	return nil
 }
 
 // LogoutHandler can be used by clients to remove the jwt cookie (if set)
@@ -515,14 +516,15 @@ func (mw *FiberJWTMiddleware) signedString(token *jwt.Token) (string, error) {
 // RefreshHandler can be used to refresh a token. The token still needs to be valid on refresh.
 // Shall be put under an endpoint that is using the FiberJWTMiddleware.
 // Reply will be of the form {"token": "TOKEN"}.
-func (mw *FiberJWTMiddleware) RefreshHandler(c *fiber.Ctx) {
+func (mw *FiberJWTMiddleware) RefreshHandler(c *fiber.Ctx) error {
 	tokenString, expire, err := mw.RefreshToken(c)
 	if err != nil {
 		mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(err, c))
-		return
+		return nil
 	}
 
 	mw.RefreshResponse(c, http.StatusOK, tokenString, expire)
+	return nil
 }
 
 // RefreshToken refresh token and check if token is expired
@@ -619,7 +621,7 @@ func (mw *FiberJWTMiddleware) TokenGenerator(data interface{}) (string, time.Tim
 }
 
 func (mw *FiberJWTMiddleware) jwtFromHeader(c *fiber.Ctx, key string) (string, error) {
-	authHeader := c.Fasthttp.Request.Header.Peek(key)
+	authHeader := c.Context().Request.Header.Peek(key)
 
 	if string(authHeader) == "" {
 		return "", ErrEmptyAuthHeader
@@ -655,7 +657,7 @@ func (mw *FiberJWTMiddleware) jwtFromCookie(c *fiber.Ctx, key string) (string, e
 }
 
 func (mw *FiberJWTMiddleware) jwtFromParam(c *fiber.Ctx, key string) (string, error) {
-	token := c.Fasthttp.UserValue(key)
+	token := c.Context().UserValue(key)
 	tokenStr := ""
 	if token != nil {
 		switch token.(type) {
@@ -735,7 +737,7 @@ func (mw *FiberJWTMiddleware) ParseTokenString(token string) (*jwt.Token, error)
 }
 
 func (mw *FiberJWTMiddleware) unauthorized(c *fiber.Ctx, code int, message string) {
-	c.Fasthttp.Request.Header.Set("WWW-Authenticate", "JWT realm="+mw.Realm)
+	c.Context().Request.Header.Set("WWW-Authenticate", "JWT realm="+mw.Realm)
 	if !mw.DisabledAbort {
 		// @todo abort?
 	}
@@ -744,7 +746,7 @@ func (mw *FiberJWTMiddleware) unauthorized(c *fiber.Ctx, code int, message strin
 
 // ExtractClaims help to extract the JWT claims
 func ExtractClaims(c *fiber.Ctx) MapClaims {
-	claims := c.Fasthttp.UserValue("JWT_PAYLOAD")
+	claims := c.Context().UserValue("JWT_PAYLOAD")
 	if claims == nil {
 		return make(MapClaims)
 	}
@@ -767,7 +769,7 @@ func ExtractClaimsFromToken(token *jwt.Token) MapClaims {
 
 // GetToken help to get the JWT token string
 func GetToken(c *fiber.Ctx) string {
-	token := c.Fasthttp.UserValue("JWT_TOKEN")
+	token := c.Context().UserValue("JWT_TOKEN")
 	if token == nil {
 		return ""
 	}
