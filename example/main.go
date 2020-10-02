@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	jwt "github.com/LdDl/fiber-jwt"
-	"github.com/gofiber/fiber"
+	jwt "github.com/LdDl/fiber-jwt/v2"
+	"github.com/gofiber/fiber/v2"
 )
 
 func main() {
@@ -41,7 +41,7 @@ func main() {
 	apiv001.Get("/refresh_token", jwtBus.RefreshHandler)
 	apiv001.Get("/secret_page", SecretPage())
 
-	app.Listen(8080)
+	app.Listen(":8080")
 }
 
 type Data struct {
@@ -49,15 +49,15 @@ type Data struct {
 	Memes string `json:"y"`
 }
 
-func Public() func(ctx *fiber.Ctx) {
-	return func(ctx *fiber.Ctx) {
-		ctx.Status(200).JSON(map[string]string{"not": "secret"})
+func Public() func(ctx *fiber.Ctx) error {
+	return func(ctx *fiber.Ctx) error {
+		return ctx.Status(200).JSON(map[string]string{"not": "secret"})
 	}
 }
 
-func SecretPage() func(ctx *fiber.Ctx) {
-	return func(ctx *fiber.Ctx) {
-		ctx.Status(200).JSON(map[string]string{"very": "secret"})
+func SecretPage() func(ctx *fiber.Ctx) error {
+	return func(ctx *fiber.Ctx) error {
+		return ctx.Status(200).JSON(map[string]string{"very": "secret"})
 	}
 }
 
@@ -109,7 +109,7 @@ func InitAuth(db Database) *jwt.FiberJWTMiddleware {
 		},
 		Authenticator: func(ctx *fiber.Ctx) (interface{}, error) {
 			loginVals := login{}
-			bodyBytes := ctx.Fasthttp.PostBody()
+			bodyBytes := ctx.Context().PostBody()
 			if err := json.Unmarshal(bodyBytes, &loginVals); err != nil {
 				return "", jwt.ErrMissingLoginValues
 			}
@@ -136,10 +136,10 @@ func InitAuth(db Database) *jwt.FiberJWTMiddleware {
 		},
 		Unauthorized: func(ctx *fiber.Ctx, code int, message string) {
 			if message == jwt.ErrFailedAuthentication.Error() {
-				ctx.Status(401).JSON(fiber.Map{"Error": string(ctx.Fasthttp.URI().Path()) + ";Unauthorized"})
+				ctx.Status(401).JSON(fiber.Map{"Error": string(ctx.Context().URI().Path()) + ";Unauthorized"})
 				return
 			}
-			ctx.Status(403).JSON(fiber.Map{"Error": string(ctx.Fasthttp.URI().Path()) + message})
+			ctx.Status(403).JSON(fiber.Map{"Error": string(ctx.Context().URI().Path()) + message})
 			return
 		},
 		TokenLookup:   "header: Authorization, query: token, cookie: token",
