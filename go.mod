@@ -1,4 +1,4 @@
-module github.com/LdDl/fiber-jwt
+module github.com/LdDl/fiber-jwt/v2
 
 go 1.14
 
