@@ -335,7 +335,7 @@ func (mw *FiberJWTMiddleware) MiddlewareInit() error {
 	}
 
 	if mw.Realm == "" {
-		mw.Realm = "gin jwt"
+		mw.Realm = "fiber jwt"
 	}
 
 	if mw.CookieMaxAge == 0 {

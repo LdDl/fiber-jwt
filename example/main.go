@@ -120,7 +120,7 @@ func InitAuth(db Database) *jwt.FiberJWTMiddleware {
 				return userID, jwt.ErrFailedAuthentication
 			}
 			if password == user.Password && user.Access == "Authentication" {
-				return userID, nil
+				return userID, jwt.ErrForbidden
 			}
 			return userID, jwt.ErrFailedAuthentication
 		},
