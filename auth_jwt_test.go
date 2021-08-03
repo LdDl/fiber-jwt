@@ -3,6 +3,7 @@ package jwt
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -649,4 +650,29 @@ func TestUnauthorized(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+}
+
+func TestLogout(t *testing.T) {
+	cookieName := "jwt"
+	cookieDomain := "example.com"
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:         "test zone",
+		Key:           key,
+		Timeout:       time.Hour,
+		Authenticator: defaultAuthenticator,
+		SendCookie:    true,
+		CookieName:    cookieName,
+		CookieDomain:  cookieDomain,
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+
+	req := httptest.NewRequest("POST", "/logout", nil)
+	resp, err := handler.Test(
+		req,
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	respCookie := resp.Header.Get("Set-Cookie")
+	assert.Equal(t, fmt.Sprintf("%s=; domain=%s; path=/; SameSite=Lax", cookieName, cookieDomain), respCookie)
 }

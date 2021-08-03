@@ -499,12 +499,11 @@ func (mw *FiberJWTMiddleware) LoginHandler(c *fiber.Ctx) error {
 func (mw *FiberJWTMiddleware) LogoutHandler(c *fiber.Ctx) error {
 	// delete auth cookie
 	if mw.SendCookie {
-
 		cookies := &fiber.Cookie{
 			Name:     mw.CookieName,
 			Value:    "",
+			MaxAge:   -1,
 			Path:     "/",
-			Expires:  time.Now().Add(-1 * time.Second),
 			Domain:   mw.CookieDomain,
 			Secure:   mw.SecureCookie,
 			HTTPOnly: mw.CookieHTTPOnly,
