@@ -320,3 +320,49 @@ func TestParseToken(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
+
+func TestParseTokenRS256(t *testing.T) {
+	authMiddleware, _ := New(&FiberJWTMiddleware{
+		Realm:            "test zone",
+		Key:              key,
+		Timeout:          time.Hour,
+		MaxRefresh:       time.Hour * 24,
+		SigningAlgorithm: "RS256",
+		PrivKeyFile:      "test_data/jwtRS256.key",
+		PubKeyFile:       "test_data/jwtRS256.key.pub",
+		Authenticator:    defaultAuthenticator,
+	})
+	handler := fiberHandler(authMiddleware)
+
+	req := httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "")
+	resp, err := handler.Test(
+		req,
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+	req = httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Test 1234")
+	resp, err = handler.Test(
+		req,
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+	req = httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS384", "admin"))
+	resp, err = handler.Test(
+		req,
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+
+	req = httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+makeTokenString("RS256", "admin"))
+	resp, err = handler.Test(
+		req,
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
