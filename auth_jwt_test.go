@@ -283,13 +283,14 @@ func TestLoginHandler(t *testing.T) {
 }
 
 func TestParseToken(t *testing.T) {
-	authMiddleware, _ := New(&FiberJWTMiddleware{
+	authMiddleware, err := New(&FiberJWTMiddleware{
 		Realm:         "test zone",
 		Key:           key,
 		Timeout:       time.Hour,
 		MaxRefresh:    time.Hour * 24,
 		Authenticator: defaultAuthenticator,
 	})
+	assert.NoError(t, err)
 	handler := fiberHandler(authMiddleware)
 	req := httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "")
@@ -322,7 +323,7 @@ func TestParseToken(t *testing.T) {
 }
 
 func TestParseTokenRS256(t *testing.T) {
-	authMiddleware, _ := New(&FiberJWTMiddleware{
+	authMiddleware, err := New(&FiberJWTMiddleware{
 		Realm:            "test zone",
 		Key:              key,
 		Timeout:          time.Hour,
@@ -332,8 +333,8 @@ func TestParseTokenRS256(t *testing.T) {
 		PubKeyFile:       "test_data/jwtRS256.key.pub",
 		Authenticator:    defaultAuthenticator,
 	})
+	assert.NoError(t, err)
 	handler := fiberHandler(authMiddleware)
-
 	req := httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "")
 	resp, err := handler.Test(
@@ -341,7 +342,6 @@ func TestParseTokenRS256(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
 	req = httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Test 1234")
 	resp, err = handler.Test(
@@ -349,7 +349,6 @@ func TestParseTokenRS256(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
 	req = httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS384", "admin"))
 	resp, err = handler.Test(
@@ -357,7 +356,6 @@ func TestParseTokenRS256(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
 	req = httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("RS256", "admin"))
 	resp, err = handler.Test(
@@ -368,16 +366,15 @@ func TestParseTokenRS256(t *testing.T) {
 }
 
 func TestRefreshHandler(t *testing.T) {
-	authMiddleware, _ := New(&FiberJWTMiddleware{
+	authMiddleware, err := New(&FiberJWTMiddleware{
 		Realm:         "test zone",
 		Key:           key,
 		Timeout:       time.Hour,
 		MaxRefresh:    time.Hour * 24,
 		Authenticator: defaultAuthenticator,
 	})
-
+	assert.NoError(t, err)
 	handler := fiberHandler(authMiddleware)
-
 	req := httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "")
 	resp, err := handler.Test(
@@ -385,7 +382,6 @@ func TestRefreshHandler(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
 	req = httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "Test 1234")
 	resp, err = handler.Test(
@@ -393,7 +389,6 @@ func TestRefreshHandler(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
 	req = httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS384", "admin"))
 	resp, err = handler.Test(
@@ -401,7 +396,6 @@ func TestRefreshHandler(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
 	req = httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS256", "admin"))
 	resp, err = handler.Test(
@@ -412,7 +406,7 @@ func TestRefreshHandler(t *testing.T) {
 }
 
 func TestRefreshHandlerRS256(t *testing.T) {
-	authMiddleware, _ := New(&FiberJWTMiddleware{
+	authMiddleware, err := New(&FiberJWTMiddleware{
 		Realm:            "test zone",
 		Key:              key,
 		Timeout:          time.Hour,
@@ -432,9 +426,8 @@ func TestRefreshHandlerRS256(t *testing.T) {
 			})
 		},
 	})
-
+	assert.NoError(t, err)
 	handler := fiberHandler(authMiddleware)
-
 	req := httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "")
 	resp, err := handler.Test(
@@ -442,7 +435,6 @@ func TestRefreshHandlerRS256(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
 	req = httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "Test 1234")
 	resp, err = handler.Test(
@@ -450,7 +442,6 @@ func TestRefreshHandlerRS256(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
-
 	req = httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("RS256", "admin"))
 	resp, err = handler.Test(
@@ -458,9 +449,59 @@ func TestRefreshHandlerRS256(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
-
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	message := gjson.Get(string(body), "message")
 	assert.Equal(t, "refresh successfully!", message.String())
+}
+
+func TestExpiredTokenWithinMaxRefreshOnRefreshHandler(t *testing.T) {
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:         "test zone",
+		Key:           key,
+		Timeout:       time.Hour,
+		MaxRefresh:    2 * time.Hour,
+		Authenticator: defaultAuthenticator,
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+	token := jwt.New(jwt.GetSigningMethod("HS256"))
+	claims := token.Claims.(jwt.MapClaims)
+	claims["identity"] = "admin"
+	claims["exp"] = time.Now().Add(-time.Minute).Unix()
+	claims["orig_iat"] = time.Now().Add(-time.Hour).Unix()
+	tokenString, err := token.SignedString(key)
+	assert.NoError(t, err)
+	req := httptest.NewRequest("GET", "/auth/refresh_token", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenString)
+	resp, err := handler.Test(
+		req,
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func TestExpiredTokenOnRefreshHandler(t *testing.T) {
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:         "test zone",
+		Key:           key,
+		Timeout:       time.Hour,
+		Authenticator: defaultAuthenticator,
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+	token := jwt.New(jwt.GetSigningMethod("HS256"))
+	claims := token.Claims.(jwt.MapClaims)
+	claims["identity"] = "admin"
+	claims["exp"] = time.Now().Add(time.Hour).Unix()
+	claims["orig_iat"] = 0
+	tokenString, err := token.SignedString(key)
+	assert.NoError(t, err)
+	req := httptest.NewRequest("GET", "/auth/refresh_token", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenString)
+	resp, err := handler.Test(
+		req,
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
