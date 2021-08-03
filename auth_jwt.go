@@ -667,25 +667,11 @@ func (mw *FiberJWTMiddleware) jwtFromCookie(c *fiber.Ctx, key string) (string, e
 }
 
 func (mw *FiberJWTMiddleware) jwtFromParam(c *fiber.Ctx, key string) (string, error) {
-	token := c.Context().UserValue(key)
-	tokenStr := ""
-	if token != nil {
-		switch token.(type) {
-		case string:
-			tokenStr = token.(string)
-			break
-		default:
-			break
-		}
-	} else {
+	token := c.Params(key)
+	if token == "" {
 		return "", ErrEmptyParamToken
 	}
-
-	if tokenStr == "" {
-		return "", ErrEmptyParamToken
-	}
-
-	return tokenStr, nil
+	return token, nil
 }
 
 // ParseToken parse jwt token from gin context
@@ -726,8 +712,8 @@ func (mw *FiberJWTMiddleware) ParseToken(c *fiber.Ctx) (*jwt.Token, error) {
 		}
 
 		// save token string if vaild
-		c.Set("JWT_TOKEN", token)
-
+		c.Context().SetUserValue("JWT_TOKEN", token)
+		// c.Set("JWT_TOKEN", token)
 		return mw.Key, nil
 	})
 }

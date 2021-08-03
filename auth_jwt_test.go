@@ -779,7 +779,6 @@ func TestCheckTokenString(t *testing.T) {
 			if v, ok := data.(MapClaims); ok {
 				return v
 			}
-
 			return nil
 		},
 	})
@@ -805,4 +804,118 @@ func TestCheckTokenString(t *testing.T) {
 	_, err = authMiddleware.ParseTokenString(userToken)
 	assert.Error(t, err)
 	assert.Equal(t, MapClaims{}, ExtractClaimsFromToken(nil))
+}
+
+func TestTokenFromQueryString(t *testing.T) {
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:         "test zone",
+		Key:           key,
+		Timeout:       time.Hour,
+		Authenticator: defaultAuthenticator,
+		Unauthorized: func(ctx *fiber.Ctx, code int, message string) error {
+			return ctx.Status(code).SendString(message)
+		},
+		TokenLookup: "query:token",
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+	userToken, _, err := authMiddleware.TokenGenerator(MapClaims{
+		"identity": "admin",
+	})
+	assert.NoError(t, err)
+	req := httptest.NewRequest("GET", "/auth/refresh_token", nil)
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	resp, err := handler.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	req = httptest.NewRequest("GET", "/auth/refresh_token?token="+userToken, nil)
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	resp, err = handler.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func TestTokenFromParamPath(t *testing.T) {
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:         "test zone",
+		Key:           key,
+		Timeout:       time.Hour,
+		Authenticator: defaultAuthenticator,
+		Unauthorized: func(ctx *fiber.Ctx, code int, message string) error {
+			return ctx.Status(code).SendString(message)
+		},
+		TokenLookup: "param:token",
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+	userToken, _, err := authMiddleware.TokenGenerator(MapClaims{
+		"identity": "admin",
+	})
+	assert.NoError(t, err)
+	req := httptest.NewRequest("GET", "/auth/refresh_token", nil)
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	resp, err := handler.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	req = httptest.NewRequest("GET", "/g/"+userToken+"/refresh_token", nil)
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	resp, err = handler.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func TestTokenFromCookieString(t *testing.T) {
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:         "test zone",
+		Key:           key,
+		Timeout:       time.Hour,
+		Authenticator: defaultAuthenticator,
+		Unauthorized: func(ctx *fiber.Ctx, code int, message string) error {
+			return ctx.Status(code).SendString(message)
+		},
+		TokenLookup: "cookie:token",
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+	userToken, _, err := authMiddleware.TokenGenerator(MapClaims{
+		"identity": "admin",
+	})
+	assert.NoError(t, err)
+	req := httptest.NewRequest("GET", "/auth/refresh_token", nil)
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	resp, err := handler.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	req = httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	resp, err = handler.Test(req)
+	assert.NoError(t, err)
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	messageToken := gjson.Get(string(body), "token")
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	assert.Equal(t, "", messageToken.String())
+	req = httptest.NewRequest("GET", "/auth/refresh_token", nil)
+	req.AddCookie(&http.Cookie{
+		Name:  "token",
+		Value: userToken,
+	})
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	resp, err = handler.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	req = httptest.NewRequest("GET", "/auth/hello", nil)
+	req.AddCookie(&http.Cookie{
+		Name:  "token",
+		Value: userToken,
+	})
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	resp, err = handler.Test(req)
+	assert.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	messageToken = gjson.Get(string(body), "token")
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, userToken, messageToken.String())
 }
