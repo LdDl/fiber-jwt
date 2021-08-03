@@ -919,3 +919,25 @@ func TestTokenFromCookieString(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, userToken, messageToken.String())
 }
+
+func TestDefineTokenHeadName(t *testing.T) {
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:         "test zone",
+		Key:           key,
+		Timeout:       time.Hour,
+		TokenHeadName: "JWTTOKEN       ",
+		Authenticator: defaultAuthenticator,
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+	req := httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS256", "admin"))
+	resp, err := handler.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	req = httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "JWTTOKEN "+makeTokenString("HS256", "admin"))
+	resp, err = handler.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
