@@ -1,3 +1,4 @@
+[![GoDoc](https://godoc.org/github.com/LdDl/fiber-jwt?status.svg)](https://godoc.org/github.com/LdDl/fiber-jwt) [![Build Status](https://travis-ci.com/LdDl/fiber-jwt.svg?branch=master)](https://travis-ci.com/LdDl/fiber-jwt) [![Sourcegraph](https://sourcegraph.com/github.com/LdDl/fiber-jwt/-/badge.svg)](https://sourcegraph.com/github.com/LdDl/fiber-jwt?badge) [![Go Report Card](https://goreportcard.com/badge/github.com/LdDl/fiber-jwt)](https://goreportcard.com/report/github.com/LdDl/fiber-jwt) [![GitHub tag](https://img.shields.io/github/tag/LdDl/fiber-jwt.svg)](https://github.com/LdDl/fiber-jwt/releases)
 # JWT Middleware for Fiber Framework
 ## *preamble: this is port of [appleyboy's](https://github.com/appleboy/gin-jwt/tree/v2.6.4) JWT middleware adapted for [Fiber framework](https://github.com/gofiber/fiber)*
 
