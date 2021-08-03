@@ -430,7 +430,7 @@ func (mw *FiberJWTMiddleware) GetClaimsFromJWT(c *fiber.Ctx) (MapClaims, error) 
 	if mw.SendAuthorization {
 		v := c.Context().UserValue("JWT_TOKEN")
 		if v != nil {
-			c.Context().Request.Header.Set("Authorization", mw.TokenHeadName+" "+v.(string))
+			c.Context().Response.Header.Set("Authorization", mw.TokenHeadName+" "+v.(string))
 		}
 	}
 

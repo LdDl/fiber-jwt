@@ -941,3 +941,72 @@ func TestDefineTokenHeadName(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
+
+func TestHTTPStatusMessageFunc(t *testing.T) {
+	var successError = fmt.Errorf("Successful test error")
+	var failedError = fmt.Errorf("Failed test error")
+	var successMessage = "Overwrite error message."
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Key:           key,
+		Timeout:       time.Hour,
+		MaxRefresh:    time.Hour * 24,
+		Authenticator: defaultAuthenticator,
+		HTTPStatusMessageFunc: func(e error, ctx *fiber.Ctx) string {
+			if e == successError {
+				return successMessage
+			}
+
+			return e.Error()
+		},
+	})
+	assert.NoError(t, err)
+	successString := authMiddleware.HTTPStatusMessageFunc(successError, nil)
+	failedString := authMiddleware.HTTPStatusMessageFunc(failedError, nil)
+	assert.Equal(t, successMessage, successString)
+	assert.NotEqual(t, successMessage, failedString)
+}
+
+func TestSendAuthorizationBool(t *testing.T) {
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:             "test zone",
+		Key:               key,
+		Timeout:           time.Hour,
+		MaxRefresh:        time.Hour * 24,
+		Authenticator:     defaultAuthenticator,
+		SendAuthorization: true,
+		Authorizator: func(data interface{}, ctx *fiber.Ctx) bool {
+			return data.(string) == "admin"
+		},
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+	req := httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS256", "test"))
+	resp, err := handler.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+	req = httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS256", "admin"))
+	resp, err = handler.Test(req)
+	assert.NoError(t, err)
+	token := resp.Header.Get("Authorization")
+	assert.Equal(t, "Bearer "+makeTokenString("HS256", "admin"), token)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func TestBadTokenOnRefreshHandler(t *testing.T) {
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:         "test zone",
+		Key:           key,
+		Timeout:       time.Hour,
+		Authenticator: defaultAuthenticator,
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+
+	req := httptest.NewRequest("GET", "/auth/refresh_token", nil)
+	req.Header.Set("Authorization", "Bearer "+"BadToken")
+	resp, err := handler.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+}
