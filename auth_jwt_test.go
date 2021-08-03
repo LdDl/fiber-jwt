@@ -765,3 +765,44 @@ func TestEmptyClaims(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	assert.Empty(t, jwtClaims)
 }
+
+func TestCheckTokenString(t *testing.T) {
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:         "test zone",
+		Key:           key,
+		Timeout:       1 * time.Second,
+		Authenticator: defaultAuthenticator,
+		Unauthorized: func(ctx *fiber.Ctx, code int, message string) error {
+			return ctx.Status(code).SendString(message)
+		},
+		PayloadFunc: func(data interface{}) MapClaims {
+			if v, ok := data.(MapClaims); ok {
+				return v
+			}
+
+			return nil
+		},
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+	userToken, _, err := authMiddleware.TokenGenerator(MapClaims{
+		"identity": "admin",
+	})
+	req := httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	resp, err := handler.Test(req)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	token, err := authMiddleware.ParseTokenString(userToken)
+	assert.NoError(t, err)
+	claims := ExtractClaimsFromToken(token)
+	assert.Equal(t, "admin", claims["identity"])
+	// Make a delay
+	time.Sleep(2 * time.Second)
+	req = httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	resp, err = handler.Test(req)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	_, err = authMiddleware.ParseTokenString(userToken)
+	assert.Error(t, err)
+	assert.Equal(t, MapClaims{}, ExtractClaimsFromToken(nil))
+}
