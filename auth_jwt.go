@@ -151,7 +151,7 @@ var (
 	ErrForbidden = errors.New("you don't have permission to access this resource")
 
 	// ErrMissingAuthenticatorFunc indicates Authenticator is required
-	ErrMissingAuthenticatorFunc = errors.New("ginJWTMiddleware.Authenticator func is undefined")
+	ErrMissingAuthenticatorFunc = errors.New("fiberJWTMiddleware.Authenticator func is undefined")
 
 	// ErrMissingLoginValues indicates a user tried to authenticate without username or password
 	ErrMissingLoginValues = errors.New("missing Username or Password")

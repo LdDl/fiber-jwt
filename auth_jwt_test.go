@@ -2,12 +2,15 @@ package jwt
 
 import (
 	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/assert"
+	"github.com/tidwall/gjson"
 )
 
 // Login form structure.
@@ -145,4 +148,44 @@ func TestMissingTokenLookup(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, "header:Authorization", authMiddleware.TokenLookup)
+}
+
+func helloHandler(ctx *fiber.Ctx) error {
+	return ctx.Status(200).JSON(map[string]string{"text": "Hello World.", "token": GetToken(ctx)})
+}
+
+func fiberHandler(auth *FiberJWTMiddleware) *fiber.App {
+	r := fiber.New()
+	r.Post("/login", auth.LoginHandler)
+	r.Post("/logout", auth.LogoutHandler)
+	// test token in path
+	r.Get("/g/:token/refresh_token", auth.RefreshHandler)
+	group := r.Group("/auth")
+	// Refresh time can be longer than token timeout
+	group.Get("/refresh_token", auth.RefreshHandler)
+	group.Use(auth.MiddlewareFunc())
+	{
+		group.Get("/hello", helloHandler)
+	}
+	return r
+}
+
+func TestMissingAuthenticatorForLoginHandler(t *testing.T) {
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:      "test zone",
+		Key:        key,
+		Timeout:    time.Hour,
+		MaxRefresh: time.Hour * 24,
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+	resp, err := handler.Test(
+		httptest.NewRequest("POST", "/login", nil),
+	)
+	assert.NoError(t, err)
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	message := gjson.Get(string(body), "message")
+	assert.Equal(t, ErrMissingAuthenticatorFunc.Error(), message.String())
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 }
