@@ -4,7 +4,7 @@
 
 ### This is a middleware for [Fiber](https://github.com/gofiber/fiber) framework, which built on top of [fasthttp](https://github.com/valyala/fasthttp)
 
-It uses [golang-jwt/jwt](github.com/golang-jwt/jwt) to provide a jwt authentication middleware. It provides additional handler functions to provide the `doauth` api that will generate the token and an additional `refresh_token` handler that can be used to refresh tokens.
+It uses [golang-jwt/jwt](https://github.com/golang-jwt/jwt#jwt-go) to provide a jwt authentication middleware. It provides additional handler functions to provide the `doauth` api that will generate the token and an additional `refresh_token` handler that can be used to refresh tokens.
 
 ## Usage
 
