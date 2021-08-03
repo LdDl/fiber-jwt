@@ -237,7 +237,6 @@ func TestLoginHandler(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	handler := fiberHandler(authMiddleware)
-
 	reqBody, err := json.Marshal(fiber.Map{
 		"username": "admin",
 	})
@@ -559,7 +558,6 @@ func TestExpiredField(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	assert.Equal(t, ErrMissingExpField.Error(), message.String())
-
 	// wrong format
 	claims["exp"] = "test"
 	tokenString, err = token.SignedString(key)
@@ -593,7 +591,6 @@ func TestExpiredTokenOnAuth(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	handler := fiberHandler(authMiddleware)
-
 	req := httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS256", "admin"))
 	resp, err := handler.Test(
@@ -601,4 +598,33 @@ func TestExpiredTokenOnAuth(t *testing.T) {
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+}
+
+func TestAuthorizator(t *testing.T) {
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:         "test zone",
+		Key:           key,
+		Timeout:       time.Hour,
+		MaxRefresh:    time.Hour * 24,
+		Authenticator: defaultAuthenticator,
+		Authorizator: func(data interface{}, ctx *fiber.Ctx) bool {
+			return data.(string) == "admin"
+		},
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+	req := httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS256", "test"))
+	resp, err := handler.Test(
+		req,
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
+	req = httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS256", "admin"))
+	resp, err = handler.Test(
+		req,
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
