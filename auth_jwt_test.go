@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -499,6 +500,102 @@ func TestExpiredTokenOnRefreshHandler(t *testing.T) {
 	assert.NoError(t, err)
 	req := httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
+	resp, err := handler.Test(
+		req,
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+}
+
+func TestTokenExpire(t *testing.T) {
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:         "test zone",
+		Key:           key,
+		Timeout:       time.Hour,
+		MaxRefresh:    -time.Second,
+		Authenticator: defaultAuthenticator,
+		Unauthorized: func(ctx *fiber.Ctx, code int, message string) error {
+			return ctx.Status(code).SendString(message)
+		},
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+	userToken, _, err := authMiddleware.TokenGenerator(MapClaims{
+		"identity": "admin",
+	})
+	assert.NoError(t, err)
+	req := httptest.NewRequest("GET", "/auth/refresh_token", nil)
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	resp, err := handler.Test(
+		req,
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+}
+
+func TestExpiredField(t *testing.T) {
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:         "test zone",
+		Key:           key,
+		Timeout:       time.Hour,
+		Authenticator: defaultAuthenticator,
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+	token := jwt.New(jwt.GetSigningMethod("HS256"))
+	claims := token.Claims.(jwt.MapClaims)
+	claims["identity"] = "admin"
+	claims["orig_iat"] = 0
+	tokenString, err := token.SignedString(key)
+	assert.NoError(t, err)
+	req := httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenString)
+	resp, err := handler.Test(
+		req,
+	)
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	message := gjson.Get(string(body), "message")
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	assert.Equal(t, ErrMissingExpField.Error(), message.String())
+
+	// wrong format
+	claims["exp"] = "test"
+	tokenString, err = token.SignedString(key)
+	req = httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenString)
+	resp, err = handler.Test(
+		req,
+	)
+	body, err = ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	message = gjson.Get(string(body), "message")
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	assert.Equal(t, strings.ToLower(ErrExpiredToken.Error()), strings.ToLower(message.String()))
+}
+
+func TestExpiredTokenOnAuth(t *testing.T) {
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:             "test zone",
+		Key:               key,
+		Timeout:           time.Hour,
+		MaxRefresh:        time.Hour * 24,
+		Authenticator:     defaultAuthenticator,
+		SendAuthorization: true,
+		Authorizator: func(data interface{}, ctx *fiber.Ctx) bool {
+			return data.(string) == "admin"
+		},
+		TimeFunc: func() time.Time {
+			return time.Now().AddDate(0, 0, 1)
+		},
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+
+	req := httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS256", "admin"))
 	resp, err := handler.Test(
 		req,
 	)
