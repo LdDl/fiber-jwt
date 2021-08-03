@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -295,30 +296,22 @@ func TestParseToken(t *testing.T) {
 	handler := fiberHandler(authMiddleware)
 	req := httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "")
-	resp, err := handler.Test(
-		req,
-	)
+	resp, err := handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	req = httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Test 1234")
-	resp, err = handler.Test(
-		req,
-	)
+	resp, err = handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	req = httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS384", "admin"))
-	resp, err = handler.Test(
-		req,
-	)
+	resp, err = handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	req = httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS256", "admin"))
-	resp, err = handler.Test(
-		req,
-	)
+	resp, err = handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
@@ -338,30 +331,22 @@ func TestParseTokenRS256(t *testing.T) {
 	handler := fiberHandler(authMiddleware)
 	req := httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "")
-	resp, err := handler.Test(
-		req,
-	)
+	resp, err := handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	req = httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Test 1234")
-	resp, err = handler.Test(
-		req,
-	)
+	resp, err = handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	req = httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS384", "admin"))
-	resp, err = handler.Test(
-		req,
-	)
+	resp, err = handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	req = httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("RS256", "admin"))
-	resp, err = handler.Test(
-		req,
-	)
+	resp, err = handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
@@ -378,30 +363,22 @@ func TestRefreshHandler(t *testing.T) {
 	handler := fiberHandler(authMiddleware)
 	req := httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "")
-	resp, err := handler.Test(
-		req,
-	)
+	resp, err := handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	req = httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "Test 1234")
-	resp, err = handler.Test(
-		req,
-	)
+	resp, err = handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	req = httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS384", "admin"))
-	resp, err = handler.Test(
-		req,
-	)
+	resp, err = handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	req = httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS256", "admin"))
-	resp, err = handler.Test(
-		req,
-	)
+	resp, err = handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
@@ -431,23 +408,17 @@ func TestRefreshHandlerRS256(t *testing.T) {
 	handler := fiberHandler(authMiddleware)
 	req := httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "")
-	resp, err := handler.Test(
-		req,
-	)
+	resp, err := handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	req = httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "Test 1234")
-	resp, err = handler.Test(
-		req,
-	)
+	resp, err = handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	req = httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("RS256", "admin"))
-	resp, err = handler.Test(
-		req,
-	)
+	resp, err = handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	body, err := ioutil.ReadAll(resp.Body)
@@ -475,9 +446,7 @@ func TestExpiredTokenWithinMaxRefreshOnRefreshHandler(t *testing.T) {
 	assert.NoError(t, err)
 	req := httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
-	resp, err := handler.Test(
-		req,
-	)
+	resp, err := handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
@@ -500,9 +469,7 @@ func TestExpiredTokenOnRefreshHandler(t *testing.T) {
 	assert.NoError(t, err)
 	req := httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
-	resp, err := handler.Test(
-		req,
-	)
+	resp, err := handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
@@ -526,9 +493,7 @@ func TestTokenExpire(t *testing.T) {
 	assert.NoError(t, err)
 	req := httptest.NewRequest("GET", "/auth/refresh_token", nil)
 	req.Header.Set("Authorization", "Bearer "+userToken)
-	resp, err := handler.Test(
-		req,
-	)
+	resp, err := handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
@@ -550,9 +515,7 @@ func TestExpiredField(t *testing.T) {
 	assert.NoError(t, err)
 	req := httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
-	resp, err := handler.Test(
-		req,
-	)
+	resp, err := handler.Test(req)
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	message := gjson.Get(string(body), "message")
@@ -564,9 +527,7 @@ func TestExpiredField(t *testing.T) {
 	tokenString, err = token.SignedString(key)
 	req = httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Bearer "+tokenString)
-	resp, err = handler.Test(
-		req,
-	)
+	resp, err = handler.Test(req)
 	body, err = ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	message = gjson.Get(string(body), "message")
@@ -594,9 +555,7 @@ func TestExpiredTokenOnAuth(t *testing.T) {
 	handler := fiberHandler(authMiddleware)
 	req := httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS256", "admin"))
-	resp, err := handler.Test(
-		req,
-	)
+	resp, err := handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
@@ -616,16 +575,12 @@ func TestAuthorizator(t *testing.T) {
 	handler := fiberHandler(authMiddleware)
 	req := httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS256", "test"))
-	resp, err := handler.Test(
-		req,
-	)
+	resp, err := handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusForbidden, resp.StatusCode)
 	req = httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Bearer "+makeTokenString("HS256", "admin"))
-	resp, err = handler.Test(
-		req,
-	)
+	resp, err = handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
@@ -645,9 +600,7 @@ func TestUnauthorized(t *testing.T) {
 	handler := fiberHandler(authMiddleware)
 	req := httptest.NewRequest("GET", "/auth/hello", nil)
 	req.Header.Set("Authorization", "Bearer 1234")
-	resp, err := handler.Test(
-		req,
-	)
+	resp, err := handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 }
@@ -666,13 +619,149 @@ func TestLogout(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	handler := fiberHandler(authMiddleware)
-
 	req := httptest.NewRequest("POST", "/logout", nil)
-	resp, err := handler.Test(
-		req,
-	)
+	resp, err := handler.Test(req)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	respCookie := resp.Header.Get("Set-Cookie")
 	assert.Equal(t, fmt.Sprintf("%s=; domain=%s; path=/; SameSite=Lax", cookieName, cookieDomain), respCookie)
+}
+
+func TestClaimsDuringAuthorization(t *testing.T) {
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:      "test zone",
+		Key:        key,
+		Timeout:    time.Hour,
+		MaxRefresh: time.Hour * 24,
+		PayloadFunc: func(data interface{}) MapClaims {
+			if v, ok := data.(MapClaims); ok {
+				return v
+			}
+			if reflect.TypeOf(data).String() != "string" {
+				return MapClaims{}
+			}
+			var testkey string
+			switch data.(string) {
+			case "admin":
+				testkey = "1234"
+			case "test":
+				testkey = "5678"
+			case "Guest":
+				testkey = ""
+			}
+			// Set custom claim, to be checked in Authorizator method
+			return MapClaims{"identity": data.(string), "testkey": testkey, "exp": 0}
+		},
+		Authenticator: func(ctx *fiber.Ctx) (interface{}, error) {
+			loginVals := Login{}
+			bodyBytes := ctx.Context().PostBody()
+			if err := json.Unmarshal(bodyBytes, &loginVals); err != nil {
+				return "", ErrMissingLoginValues
+			}
+			if loginVals.Username == "" || loginVals.Password == "" {
+				return "", ErrMissingLoginValues
+			}
+			userID := loginVals.Username
+			password := loginVals.Password
+			if userID == "admin" && password == "admin" {
+				return userID, nil
+			}
+			if userID == "test" && password == "test" {
+				return userID, nil
+			}
+			return "Guest", ErrFailedAuthentication
+		},
+		Authorizator: func(user interface{}, ctx *fiber.Ctx) bool {
+			jwtClaims := ExtractClaims(ctx)
+			if jwtClaims["identity"] == "administrator" {
+				return true
+			}
+			if jwtClaims["testkey"] == "1234" && jwtClaims["identity"] == "admin" {
+				return true
+			}
+			if jwtClaims["testkey"] == "5678" && jwtClaims["identity"] == "test" {
+				return true
+			}
+			return false
+		},
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+	userToken, _, err := authMiddleware.TokenGenerator(MapClaims{
+		"identity": "administrator",
+	})
+	assert.NoError(t, err)
+	req := httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	resp, err := handler.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	reqBody, err := json.Marshal(fiber.Map{
+		"username": "admin",
+		"password": "admin",
+	})
+	assert.NoError(t, err)
+	resp, err = handler.Test(
+		httptest.NewRequest("POST", "/login", bytes.NewReader(reqBody)),
+	)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	req = httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+userToken)
+	resp, err = handler.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	reqBody, err = json.Marshal(fiber.Map{
+		"username": "test",
+		"password": "test",
+	})
+	assert.NoError(t, err)
+	resp, err = handler.Test(
+		httptest.NewRequest("POST", "/login", bytes.NewReader(reqBody)),
+	)
+	assert.NoError(t, err)
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	messageToken := gjson.Get(string(body), "token")
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	req = httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer "+messageToken.String())
+	resp, err = handler.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func TestEmptyClaims(t *testing.T) {
+	jwtClaims := MapClaims{}
+	authMiddleware, err := New(&FiberJWTMiddleware{
+		Realm:      "test zone",
+		Key:        key,
+		Timeout:    time.Hour,
+		MaxRefresh: time.Hour * 24,
+		Authenticator: func(ctx *fiber.Ctx) (interface{}, error) {
+			loginVals := Login{}
+			userID := loginVals.Username
+			password := loginVals.Password
+			if userID == "admin" && password == "admin" {
+				return "", nil
+			}
+			if userID == "test" && password == "test" {
+				return "Administrator", nil
+			}
+			return userID, ErrFailedAuthentication
+		},
+		Unauthorized: func(ctx *fiber.Ctx, code int, message string) error {
+			assert.Empty(t, ExtractClaims(ctx))
+			assert.Empty(t, map[string]interface{}{})
+			return ctx.Status(code).SendString(message)
+		},
+	})
+	assert.NoError(t, err)
+	handler := fiberHandler(authMiddleware)
+	req := httptest.NewRequest("GET", "/auth/hello", nil)
+	req.Header.Set("Authorization", "Bearer 1234")
+	resp, err := handler.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	assert.Empty(t, jwtClaims)
 }
