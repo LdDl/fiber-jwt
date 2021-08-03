@@ -99,8 +99,18 @@ type FiberJWTMiddleware struct {
 	// Private key file for asymmetric algorithms
 	PrivKeyFile string
 
+	// Private Key bytes for asymmetric algorithms
+	//
+	// Note: PrivKeyFile takes precedence over PrivKeyBytes if both are set
+	PrivKeyBytes []byte
+
 	// Public key file for asymmetric algorithms
 	PubKeyFile string
+
+	// Public key bytes for asymmetric algorithms.
+	//
+	// Note: PubKeyFile takes precedence over PubKeyBytes if both are set
+	PubKeyBytes []byte
 
 	// Private key
 	privKey *rsa.PrivateKey
@@ -217,9 +227,15 @@ func (mw *FiberJWTMiddleware) readKeys() error {
 }
 
 func (mw *FiberJWTMiddleware) privateKey() error {
-	keyData, err := ioutil.ReadFile(mw.PrivKeyFile)
-	if err != nil {
-		return ErrNoPrivKeyFile
+	keyData := []byte{}
+	if mw.PrivKeyFile == "" {
+		keyData = mw.PrivKeyBytes
+	} else {
+		filecontent, err := ioutil.ReadFile(mw.PrivKeyFile)
+		if err != nil {
+			return ErrNoPrivKeyFile
+		}
+		keyData = filecontent
 	}
 	key, err := jwt.ParseRSAPrivateKeyFromPEM(keyData)
 	if err != nil {
@@ -230,9 +246,15 @@ func (mw *FiberJWTMiddleware) privateKey() error {
 }
 
 func (mw *FiberJWTMiddleware) publicKey() error {
-	keyData, err := ioutil.ReadFile(mw.PubKeyFile)
-	if err != nil {
-		return ErrNoPubKeyFile
+	keyData := []byte{}
+	if mw.PubKeyFile == "" {
+		keyData = mw.PubKeyBytes
+	} else {
+		filecontent, err := ioutil.ReadFile(mw.PubKeyFile)
+		if err != nil {
+			return ErrNoPubKeyFile
+		}
+		keyData = filecontent
 	}
 	key, err := jwt.ParseRSAPublicKeyFromPEM(keyData)
 	if err != nil {

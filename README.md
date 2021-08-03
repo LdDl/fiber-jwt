@@ -1,5 +1,5 @@
 # JWT Middleware for Fiber Framework
-## *preamble: this is port of [appleyboy's](https://github.com/appleboy/gin-jwt/tree/v2.6.3) JWT middleware adapted for [Fiber framework](https://github.com/gofiber/fiber)*
+## *preamble: this is port of [appleyboy's](https://github.com/appleboy/gin-jwt/tree/v2.6.4) JWT middleware adapted for [Fiber framework](https://github.com/gofiber/fiber)*
 
 ### This is a middleware for [Fiber](https://github.com/gofiber/fiber) framework, which built on top of [fasthttp](https://github.com/valyala/fasthttp)
 
