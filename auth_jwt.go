@@ -63,7 +63,7 @@ type FiberJWTMiddleware struct {
 	Unauthorized func(*fiber.Ctx, int, string) error
 
 	// User can define own LoginResponse func.
-	LoginResponse func(*fiber.Ctx, int, string, time.Time) error
+	LoginResponse func(*fiber.Ctx, int, string, time.Time, map[string]interface{}) error
 
 	// User can define own LogoutResponse func.
 	LogoutResponse func(*fiber.Ctx, int) error
@@ -312,7 +312,7 @@ func (mw *FiberJWTMiddleware) MiddlewareInit() error {
 	}
 
 	if mw.LoginResponse == nil {
-		mw.LoginResponse = func(c *fiber.Ctx, code int, token string, expire time.Time) error {
+		mw.LoginResponse = func(c *fiber.Ctx, code int, token string, expire time.Time, claims map[string]interface{}) error {
 			return c.Status(http.StatusOK).JSON(fiber.Map{
 				"code":   http.StatusOK,
 				"token":  token,
@@ -492,7 +492,7 @@ func (mw *FiberJWTMiddleware) LoginHandler(c *fiber.Ctx) error {
 		c.Cookie(cookies)
 	}
 
-	return mw.LoginResponse(c, http.StatusOK, tokenString, expire)
+	return mw.LoginResponse(c, http.StatusOK, tokenString, expire, claims)
 }
 
 // LogoutHandler can be used by clients to remove the jwt cookie (if set)

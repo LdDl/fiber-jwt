@@ -140,6 +140,11 @@ func InitAuth(db Database) *jwt.FiberJWTMiddleware {
 			}
 			return ctx.Status(403).JSON(fiber.Map{"Error": string(ctx.Context().URI().Path()) + message})
 		},
+		LoginResponse: func(ctx *fiber.Ctx, code int, token string, exp time.Time, claims map[string]interface{}) error {
+			fmt.Println("This function should be last")
+			fmt.Println("Claims are", claims)
+			return nil
+		},
 		TokenLookup:   "header: Authorization, query: token, cookie: token",
 		TokenHeadName: "Bearer",
 		TimeFunc:      time.Now,

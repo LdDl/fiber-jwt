@@ -224,7 +224,7 @@ func TestLoginHandler(t *testing.T) {
 		Authorizator: func(user interface{}, c *fiber.Ctx) bool {
 			return true
 		},
-		LoginResponse: func(ctx *fiber.Ctx, code int, token string, tm time.Time) error {
+		LoginResponse: func(ctx *fiber.Ctx, code int, token string, tm time.Time, claims map[string]interface{}) error {
 			return ctx.Status(http.StatusOK).JSON(fiber.Map{
 				"code":    http.StatusOK,
 				"token":   token,
