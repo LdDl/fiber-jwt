@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	jwt "github.com/LdDl/fiber-jwt/v2"
@@ -143,7 +144,11 @@ func InitAuth(db Database) *jwt.FiberJWTMiddleware {
 		LoginResponse: func(ctx *fiber.Ctx, code int, token string, exp time.Time, claims map[string]interface{}) error {
 			fmt.Println("This function should be last")
 			fmt.Println("Claims are", claims)
-			return nil
+			return ctx.Status(http.StatusOK).JSON(fiber.Map{
+				"code":   http.StatusOK,
+				"token":  token,
+				"expire": exp.Format(time.RFC3339),
+			})
 		},
 		TokenLookup:   "header: Authorization, query: token, cookie: token",
 		TokenHeadName: "Bearer",
